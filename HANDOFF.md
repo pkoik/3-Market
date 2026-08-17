@@ -134,7 +134,7 @@ The existing string properties on `MarketVM` remain the content API for the comp
 
 ## Live Text Controls
 
-Append `?dev=1` to enable the collapsible `TEXT CONTROLS` panel inside the complete market block. It is closed by default and does not exist as an active editing UI in normal preview mode.
+The collapsible `TEXT CONTROLS` panel is available by default inside the complete market block and remains closed until opened. Append `?dev=0` when a clean presentation view without developer controls is required.
 
 Each field writes directly to its bound `MarketVM` string property on the `input` event, so changes appear in Rive while typing. `RESET ALL` restores the values loaded from the Rive instance for the current page session.
 
@@ -176,7 +176,7 @@ src: "./3-market_v02.riv"
 
 ## Diagnostics
 
-Append `?dev=1` to the URL to display the status of all five previews. Successful triggers appear as:
+Developer status is displayed inside the text controls panel by default. Append `?dev=0` to hide both the panel and diagnostics. Successful triggers appear as:
 
 ```text
 main: MarketVM.isIn fired
@@ -198,7 +198,7 @@ The console logs one `[Xsolla Market Rive v2]` object per instance with its Artb
 - both Graph labels and both complete isolated Jackets render without canvas-edge clipping;
 - the Graphs use their native scale and the Jackets use a 50% desktop scale with dedicated top reserve;
 - all 13 `MarketVM` string properties update live through the collapsible dev panel;
-- `RESET ALL` restores the initial Rive text values, while normal mode keeps the panel hidden;
+- `RESET ALL` restores the initial Rive text values, while `?dev=0` hides the panel for presentation mode;
 - desktop layout works at `1280 × 720`;
 - mobile layout works at `390 × 844`, with Graph and Jacket triggers firing independently;
 - canvas resizing and DPR handling are active;

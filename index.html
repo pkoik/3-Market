@@ -626,7 +626,7 @@
         }
       ];
 
-      const devEnabled = new URLSearchParams(location.search).get("dev") === "1";
+      const devEnabled = new URLSearchParams(location.search).get("dev") !== "0";
       const devStatus = document.getElementById("dev-status");
       const marketTextControls = document.getElementById("market-text-controls");
       const marketTextFields = document.getElementById("market-text-fields");
