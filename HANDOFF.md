@@ -1,159 +1,216 @@
-# 3 — Market · Rive integration handoff
+# 3 — Market · Rive v2 Integration Handoff
 
-Дата передачи: 11 августа 2026
+Handoff updated: August 17, 2026
 
-Репозиторий: https://github.com/pkoik/3-Market
+Reference repository: https://github.com/pkoik/3-Market
 
-## Состав поставки
+## Deliverables
 
-| Файл | Назначение |
+| File | Purpose |
 | --- | --- |
-| `index.html` | Самодостаточная демонстрационная страница с placeholder перед секцией, адаптивной Rive-интеграцией и встроенными данными `.riv` |
-| `3-Market_v01.riv` | Исходный Rive-файл для дальнейшей разработки и повторного экспорта |
-| `HANDOFF.md` | Этот документ |
+| `index.html` | Standalone responsive preview with the complete market block plus two labeled Graph/Jacket source groups |
+| `3-market_v02.riv` | Current main Rive v2 source used by the complete block and the first pair of isolated artboards |
+| `3-marketgraphs.riv` | Independent Graph-only Rive source |
+| `3-marketjacket.riv` | Independent Jacket-only Rive source |
+| `3-Market_v01.riv` | Previous source version retained for reference |
+| `HANDOFF.md` | This integration document |
 
-В текущем `index.html` данные Rive встроены в HTML как base64. Поэтому для запуска демо отдельная загрузка `3-Market_v01.riv` не требуется. Исходный `.riv` оставлен рядом для разработки.
+`index.html` embeds all three current Rive files as base64, so no manual file picker is required when opening the demo directly. The separate `.riv` files are included for development.
 
-## Быстрый запуск
+## Runtime
 
-Демо можно открыть напрямую через `index.html` или разместить как статический сайт.
-
-Настройки Netlify:
-
-- production branch: `main`;
-- build command: не требуется;
-- publish directory: корень репозитория (`/`);
-- entry point: `/index.html`.
-
-Rive WebGL2 runtime загружается с CDN:
+The preview uses the pinned WebGL2 runtime:
 
 ```text
 https://unpkg.com/@rive-app/webgl2@2.38.4
 ```
 
-Для работы страницы необходимо интернет-соединение к CDN. Версия runtime зафиксирована и не должна обновляться без повторной проверки анимации, View Model и размытия.
+WebGL2 is required because the asset uses blur effects. There is no automatic Canvas renderer fallback.
 
-## Что является рабочей секцией
+Every Rive instance uses:
 
-- `.page-placeholder` — только имитация контента страницы перед секцией. В продукте его нужно удалить или заменить реальным контентом.
-- `.market-section` — контейнер секции.
-- `.rive-frame` — видимая область дизайна с базовым размером `1136 × 564`.
-- `#rive-canvas` — WebGL2 canvas с Rive-анимацией.
+- `autoplay: true`;
+- `autoBind: true`;
+- `useOffscreenRenderer: false`;
+- `Fit.Layout`;
+- `State Machine 1`.
 
-## Rive contract
+## Rive v2 Contract
 
-Не переименовывать эти сущности без синхронных изменений в Rive-файле и коде:
+Do not rename these entities without updating the integration code:
 
-| Параметр | Значение |
-| --- | --- |
-| Rive file | `3-Market_v01.riv` |
-| Artboard | `3 - Market` |
-| State Machine | `State Machine 1` |
-| View Model | `MarketVM` |
-| View Model Instance | `Instance` |
-| Entrance trigger | `isIn` |
-| Renderer | WebGL2 |
-| Runtime | `@rive-app/webgl2@2.38.4` |
+| Preview | Source file | Artboard | Size | View Model | Instance | Entrance trigger |
+| --- | --- | --- | --- | --- | --- | --- |
+| Complete block | `3-market_v02.riv` | `3 - Market` | `1136 × 536` | `MarketVM` | `Instance` | `isIn` |
+| Graph from main file | `3-market_v02.riv` | `Graph` | `265 × 204` | `GraphVM` | `Instance` | `isStatsGraph` |
+| Jacket from main file | `3-market_v02.riv` | `Jacket` | `573 × 573` | `JacketVM` | `Instance` | `isJacketIn` |
+| Independent Graph | `3-marketgraphs.riv` | `Graph` | `265 × 204` | `GraphVM` | `Instance` | `isStatsGraph` |
+| Independent Jacket | `3-marketjacket.riv` | `Jacket` | `619 × 665` | `JacketVM` | `Instance` | `isJacketIn` |
 
-State Machine запускается с `autoplay: true`. View Model подключается через `autoBind: true`; при необходимости код явно находит `MarketVM`, выбирает экземпляр `Instance` и вызывает `bindViewModelInstance()`.
+The complete block still contains the nested Graph and Jacket components. The first isolated pair instantiates those artboards directly from the main file. The second pair uses the two independent exported files.
 
-## Scroll trigger
+## Page Structure
 
-Входная анимация запускается один раз, когда в viewport стало видно не менее 18% блока `.rive-frame`:
+- `.page-placeholder` simulates the page content before the Rive section.
+- `.market-section` contains the complete `3 - Market` artboard.
+- `.components-section` contains two clearly labeled source groups: artboards from the main file, followed by the independent files.
+- Each group contains only a Graph and Jacket, with no market supporting text.
+- On desktop, the Graph and Jacket in each group are displayed side by side.
+- At widths up to 900 px, they stack vertically and trigger independently as they enter the viewport.
+
+Remove or replace `.page-placeholder` during product integration.
+
+## Scroll Triggers
+
+Each preview has its own `IntersectionObserver`. Its entrance trigger fires once when at least 18% of that preview frame is visible:
 
 ```js
 const TRIGGER_THRESHOLD = 0.18;
 ```
 
-`IntersectionObserver` вызывает trigger `MarketVM.isIn`. Для браузеров без `IntersectionObserver` предусмотрен fallback через пассивные обработчики `scroll` и `resize`.
+| Frame | Trigger fired |
+| --- | --- |
+| `#main-frame` | `MarketVM.isIn` |
+| `#graph-main-frame` | `GraphVM.isStatsGraph` from `3-market_v02.riv` |
+| `#jacket-main-frame` | `JacketVM.isJacketIn` from `3-market_v02.riv` |
+| `#graph-file-frame` | `GraphVM.isStatsGraph` from `3-marketgraphs.riv` |
+| `#jacket-file-frame` | `JacketVM.isJacketIn` from `3-marketjacket.riv` |
 
-Условия запуска защищены от гонки: trigger срабатывает только когда одновременно загружен Rive-файл, подключён View Model и секция достигла порога видимости.
+A trigger only fires after the corresponding Rive instance has loaded and its View Model has been bound. Browsers without `IntersectionObserver` use passive `scroll` and `resize` listeners.
 
-## Адаптивность
+## Responsive Behavior
 
-Базовый размер макета:
+The complete block keeps the v2 source-artboard ratio of `1136 / 536`.
 
-```text
-1136 × 564 px при viewport 1440 × 1080 px
-```
-
-`.rive-frame` сохраняет пропорцию `1136 / 564` и ограничен шириной viewport с внешними отступами:
-
-- desktop/tablet: по 24 px;
-- до 640 px: по 16 px;
-- минимальная поддерживаемая ширина страницы: 320 px.
-
-Масштаб рассчитывается пропорционально:
+Its scale is calculated from the current frame width:
 
 ```js
 scale = frame.clientWidth / 1136;
 ```
 
-Проверенные ориентиры:
+Both Graph previews are rendered at their native `265 × 204` scale inside `360 × 300` working canvases. The Jacket from the main file is rendered at 50% scale inside a `760 × 900` working canvas displayed at `380 × 450`. The independent Jacket is rendered at 50% scale inside an `820 × 1000` working canvas displayed at `410 × 500`. On narrower screens all working canvases scale down proportionally.
 
-| Ширина viewport | Масштаб |
-| --- | --- |
-| 1440 px | 100% |
-| 900 px | 75% |
-| 600 px | 50% |
+Horizontal page margins:
 
-После изменения размеров вызывается `resizeDrawingSurfaceToCanvas()`. `ResizeObserver` отслеживает контейнер, а отдельный listener — изменение `devicePixelRatio`, чтобы canvas оставался чётким на Retina/HiDPI-дисплеях.
+- desktop and tablet: 24 px;
+- mobile: 16 px;
+- minimum supported page width: 320 px.
 
-## Выход графики за границы блока
+Each frame is observed with `ResizeObserver`. After meaningful size or DPR changes, the integration calls `resizeDrawingSurfaceToCanvas()`. A separate DPR watcher keeps the canvases sharp on Retina and HiDPI displays.
 
-В Rive персонаж намеренно выходит за базовую область `1136 × 564`. Его размер менять не нужно.
+## Overflow-Safe Rendering
 
-Для сохранения этого поведения:
+The Jacket intentionally extends beyond the complete block. To preserve it:
 
-- canvas имеет рабочий размер `1238 × 620`;
-- `.market-section` и `.rive-frame` используют `overflow: visible`;
-- Rive выровнен по `TopLeft`;
-- `body` использует только `overflow-x: hidden`, чтобы выступающий объект не создавал горизонтальный скролл;
-- нельзя добавлять `overflow: hidden`, `clip-path` или `contain: paint` на `.market-section`, `.rive-frame` или их продуктовые аналоги.
+- the visible main frame follows `1136 × 536`;
+- the main canvas working area remains `1238 × 620`;
+- `.market-section` and `.market-frame` use `overflow: visible`;
+- the main artboard uses `TopLeft` alignment;
+- `body` uses only `overflow-x: hidden`;
+- do not add `overflow: hidden`, `clip-path`, or `contain: paint` to the main frame or its product container.
 
-`contain: layout size` на `.rive-frame` допустим: он не обрезает отрисовку.
+The isolated previews use the same overflow-safe technique:
 
-## WebGL2 и blur
+- Graph: `360 × 300` working canvas, native artboard scale (`1:1` on desktop);
+- Jacket from the main file: `760 × 900` working canvas, displayed at `0.5` scale on desktop;
+- independent Jacket: `820 × 1000` working canvas, displayed at `0.5` scale on desktop;
+- both Jackets start at a `120` source-pixel vertical offset, producing `60 px` of visible top reserve at the desktop scale;
+- both use `TopLeft` alignment with `Fit.Layout`;
+- their frames and parent stage keep `overflow: visible` and do not use paint containment.
 
-Используется пакет `@rive-app/webgl2`, поскольку Rive-файл содержит размытия. После загрузки код дополнительно проверяет наличие контекста `canvas.getContext("webgl2")`.
+The larger WebGL2 drawing surfaces are required because CSS `overflow: visible` cannot restore pixels that were already clipped at the canvas boundary.
 
-Если WebGL2 недоступен, показывается явное сообщение об ошибке. Автоматического перехода на Canvas renderer нет, поскольку он может визуально отличаться и некорректно отображать blur.
+## View Model Resolution
 
-## Интеграция в продуктовую страницу
+For every preview, use the instance automatically attached to the artboard when it matches the configured View Model. Otherwise:
 
-1. Перенести разметку `.market-section` и `.rive-frame` из `index.html`.
-2. Перенести связанные стили, сохранив адаптивную пропорцию и `overflow: visible`.
-3. Подключить зафиксированный WebGL2 runtime.
-4. Создать Rive instance с указанными Artboard, State Machine и `Fit.Layout` / `TopLeft`.
-5. Подключить `MarketVM.Instance` и получить trigger `isIn`.
-6. Настроить `IntersectionObserver` с порогом `0.18`.
-7. Сохранить `ResizeObserver`, DPR watcher и вызов `resizeDrawingSurfaceToCanvas()`.
-8. При размонтировании компонента отключить observers/listeners и вызвать `player.cleanup()`.
+1. resolve the View Model by name;
+2. try the named `Instance`;
+3. fall back to `defaultInstance()` or `instance()`;
+4. bind it with `bindViewModelInstance()`;
+5. resolve the configured trigger and fail visibly if it is missing.
 
-В продукте `.riv` можно загружать отдельным статическим asset вместо base64. Для этого заменить запуск из встроенного buffer на `src: "./3-Market_v01.riv"`, сохранив остальную конфигурацию без изменений.
+The existing string properties on `MarketVM` remain the content API for the complete block.
 
-## Диагностика
+## Live Text Controls
 
-Добавьте `?dev=1` к URL, чтобы показать компактный индикатор состояния. В консоль после успешной загрузки выводится объект `[Xsolla Market Rive]` с именами Artboard, State Machine, View Model, trigger и renderer.
+Append `?dev=1` to enable the collapsible `TEXT CONTROLS` panel inside the complete market block. It is closed by default and does not exist as an active editing UI in normal preview mode.
 
-## Проверено
+Each field writes directly to its bound `MarketVM` string property on the `input` event, so changes appear in Rive while typing. `RESET ALL` restores the values loaded from the Rive instance for the current page session.
 
-- загрузка встроенного Rive-файла без ручного выбора файла;
-- WebGL2 renderer и отображение blur;
-- подключение `MarketVM.Instance`;
-- однократный запуск `MarketVM.isIn` при достижении секции;
-- пропорциональное уменьшение на desktop, tablet и mobile;
-- Retina/HiDPI resize;
-- отсутствие обрезания персонажа за границами базового блока;
-- очистка Rive instance, observers и listeners при закрытии страницы;
-- отсутствие ошибок в консоли в проверенной конфигурации.
+The panel exposes these 13 properties:
 
-## Критерии приёмки после переноса
+```text
+processedSalesAmount
+processedSalesDescription
+developerRevenueAmount
+developerRevenueDescription
+directSalesStudiosCount
+directSalesStudiosDescription
+steamFeePercentage
+steamFeeDescription
+directTransactionsDescription
+gamesAt1MCount
+gamesAt1MLabel
+gamesAt10MCount
+gamesAt10MLabel
+```
 
-- при viewport `1440 × 1080` основной блок визуально равен `1136 × 564`;
-- при уменьшении окна вся композиция уменьшается пропорционально и не появляется горизонтальный скролл;
-- выступающий персонаж остаётся исходного относительного размера и не обрезается;
-- анимация не стартует до появления секции и запускается при видимости около 18%;
-- trigger срабатывает только один раз за загрузку страницы;
-- blur соответствует Rive Preview;
-- в консоли нет load, WebGL2, View Model или trigger errors.
+Text edits are preview-only and are not written back into `3-market_v02.riv` or persisted after reload.
+
+## Product Integration
+
+1. Copy the required section markup and styles from `index.html`.
+2. Load `3-market_v02.riv` as a static asset or reuse the embedded buffer approach.
+3. Create separate Rive instances for any artboards that must be rendered independently.
+4. Keep the Artboard, View Model, Instance, and trigger names from the contract table.
+5. Keep the per-frame scroll observer instead of using one shared trigger.
+6. Keep `ResizeObserver`, DPR watching, and `resizeDrawingSurfaceToCanvas()`.
+7. Call `player.cleanup()` and disconnect observers/listeners when a component unmounts.
+
+To load the external asset instead of the embedded buffer, use:
+
+```js
+src: "./3-market_v02.riv"
+```
+
+## Diagnostics
+
+Append `?dev=1` to the URL to display the status of all five previews. Successful triggers appear as:
+
+```text
+main: MarketVM.isIn fired
+graph-main: GraphVM.isStatsGraph fired
+jacket-main: JacketVM.isJacketIn fired
+graph-file: GraphVM.isStatsGraph fired
+jacket-file: JacketVM.isJacketIn fired
+```
+
+The console logs one `[Xsolla Market Rive v2]` object per instance with its Artboard, State Machine, View Model, trigger, and renderer.
+
+## Verified
+
+- v2 embedded data loads without a manual file picker;
+- all five previews create independent WebGL2 instances;
+- `MarketVM.isIn` and all four component triggers fire from their own viewport observers;
+- both isolated source groups contain only the Graph and Jacket visuals and are labeled with their source files;
+- the complete block retains the intended Jacket overflow;
+- both Graph labels and both complete isolated Jackets render without canvas-edge clipping;
+- the Graphs use their native scale and the Jackets use a 50% desktop scale with dedicated top reserve;
+- all 13 `MarketVM` string properties update live through the collapsible dev panel;
+- `RESET ALL` restores the initial Rive text values, while normal mode keeps the panel hidden;
+- desktop layout works at `1280 × 720`;
+- mobile layout works at `390 × 844`, with Graph and Jacket triggers firing independently;
+- canvas resizing and DPR handling are active;
+- no runtime warnings or errors were observed.
+
+## Acceptance Criteria
+
+- the complete block preserves the `1136 × 536` v2 artboard ratio;
+- the complete block entrance starts only after `#main-frame` reaches approximately 18% visibility;
+- the isolated Graph and Jacket show without the surrounding market text;
+- each isolated component fires only its own trigger and only once per page load;
+- all canvases scale without horizontal scrolling;
+- the main and isolated overflow is not clipped;
+- blur rendering matches the Rive preview;
+- the console contains no load, WebGL2, View Model, or trigger errors.
